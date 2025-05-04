@@ -12,14 +12,18 @@ MerkleProofX is a powerful Web3 platform that simplifies the process of generati
 - ⚡ Gas-efficient smart contract integration
 - 🛡️ Built-in address validation and security checks
 
-## 🔧 How It Works
+## 🔧 How It Works (Updated for MerkleProofX)
+Upload Addresses: Admin uploads addresses through text input or file upload.
 
-1. **Upload Addresses**: Add addresses through the admin panel via text input or file upload.
-2. **Generate Merkle Root**: The platform automatically generates a Merkle root from the uploaded addresses.
-3. **Deploy Contract**: Use our verifier contract or integrate the Merkle root into your own smart contract.
-4. **Generate Proofs**: Users can check their eligibility and generate Merkle proofs.
-5. **Verify On-chain**: Smart contracts can verify proofs against the stored Merkle root.
+Generate Merkle Root: The system automatically generates a Merkle root from the uploaded addresses.
 
+Register Merkle Tree: Platform stores the Merkle root on-chain via the MerkleProofX contract.
+
+(Optional) External Proof Generation: Users can generate proofs externally if another application requests it.
+
+Verify Trust: Users can verify themselves via KoS off-chain signed proofs.
+
+Verify On-chain: Other smart contracts can reference the Merkle roots stored on MerkleProofX for verification.
 ## 🔗 Smart Contract Integration
 
 ### Basic Verifier Contract

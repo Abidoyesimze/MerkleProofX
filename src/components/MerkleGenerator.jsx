@@ -260,116 +260,104 @@ const MerkleGenerator = () => {
         <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add Addresses</h3>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inputAddress}
-                onChange={(e) => setInputAddress(e.target.value)}
-                placeholder="Enter Ethereum address"
-                className="flex-1 px-4 py-2 border rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+            <div className="relative">
+              <textarea
+                placeholder="Paste addresses here (one per line)"
+                onChange={handlePasteAddresses}
+                className="block w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700 dark:text-white dark:border-gray-600"
               />
-              <button
-                onClick={handleAddAddress}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <PlusIcon className="h-5 w-5" />
-              </button>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Or paste multiple addresses below:</p>
-            <textarea
-              className="w-full h-32 p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-              placeholder="Paste addresses here (one per line)"
-              onChange={handlePasteAddresses}
+          </div>
+        </div>
+
+        {/* Address Input Section */}
+        <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add Single Address</h3>
+          <div className="flex space-x-4">
+            <input
+              type="text"
+              value={inputAddress}
+              onChange={(e) => setInputAddress(e.target.value)}
+              placeholder="Enter Ethereum address"
+              className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700 dark:text-white dark:border-gray-600"
             />
+            <button
+              onClick={handleAddAddress}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add
+            </button>
           </div>
         </div>
 
         {/* Address List Section */}
-        {addresses.length > 0 && (
-          <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Address List ({addresses.length})
-              </h3>
-              <button
-                onClick={downloadAllData}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Download All Data
-              </button>
-            </div>
-            <div className="max-h-60 overflow-y-auto">
-              {addresses.map((addr, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="font-mono text-sm text-gray-900 dark:text-white">{addr}</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleGenerateProof(addr)}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      Generate Proof
-                    </button>
-                    <button
-                      onClick={() => handleRemoveAddress(addr)}
-                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
+        <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Addresses List</h3>
+          {addresses.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">No addresses added yet</p>
+          ) : (
+            <ul className="space-y-2">
+              {addresses.map((address) => (
+                <li key={address} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-200">{address}</span>
+                  <button
+                    onClick={() => handleRemoveAddress(address)}
+                    className="text-red-600 dark:text-red-400 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleGenerateProof(address)}
+                    className="text-green-600 dark:text-green-400 hover:text-green-700"
+                  >
+                    <DocumentCheckIcon className="h-5 w-5" />
+                  </button>
+                </li>
               ))}
-            </div>
-          </div>
-        )}
+            </ul>
+          )}
+        </div>
 
-        {/* Merkle Root Section */}
-        {merkleRoot && (
-          <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Merkle Root</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Use this root hash in your smart contract to verify proofs.
-            </p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700">
-              <code className="break-all text-gray-900 dark:text-white">{merkleRoot}</code>
-            </div>
-            <button
-              onClick={() => copyToClipboard(merkleRoot)}
-              className="mt-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Copy Root
-            </button>
-          </div>
-        )}
-
-        {/* Proof Section */}
+        {/* Proof Generation Section */}
         {proof.length > 0 && (
           <div className="border rounded-lg p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Merkle Proof</h3>
-            <p className="mb-2 text-gray-600 dark:text-gray-300">For address: {selectedAddress}</p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700">
-              <code className="break-all text-gray-900 dark:text-white">
-                {JSON.stringify(proof, null, 2)}
-              </code>
-            </div>
-            <div className="mt-4 space-x-4">
-              <button
-                onClick={() => copyToClipboard(JSON.stringify(proof))}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Copy Proof
-              </button>
-              <button
-                onClick={downloadProof}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Download Proof
-              </button>
+            <div className="space-y-4">
+              <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg overflow-x-auto">
+                <pre className="text-sm text-gray-800 dark:text-white">{JSON.stringify(proof, null, 2)}</pre>
+              </div>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(proof, null, 2))}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Copy Proof to Clipboard
+                </button>
+                <button
+                  onClick={downloadProof}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Download Proof
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Download All Data Button */}
+      {addresses.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={downloadAllData}
+            className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+          >
+            Download All Data
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-export default MerkleGenerator 
+export default MerkleGenerator

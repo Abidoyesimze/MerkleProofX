@@ -3,7 +3,6 @@ const hre = require("hardhat");
 async function main() {
   console.log("Deploying MerkleProofX contract...");
 
-  // Get the treasury address from environment or use deployer's address
   const [deployer] = await hre.ethers.getSigners();
   const treasuryAddress = process.env.TREASURY_ADDRESS || deployer.address;
   
@@ -14,14 +13,27 @@ async function main() {
 
   await merkleProofX.waitForDeployment();
 
-  console.log("MerkleProofX deployed to:", await merkleProofX.getAddress());
+  const contractAddress = await merkleProofX.getAddress();
+
+  console.log("✅ MerkleProofX deployed to:", contractAddress);
   console.log("Treasury address set to:", treasuryAddress);
   console.log("Platform fee set to:", await merkleProofX.getPlatformFee());
+
+  console.log("\n⏳ Waiting for a few confirmations before verification...");
+  await merkleProofX.deploymentTransaction().wait(3); // Wait for 3 confirmations (important!)
+
+  console.log("🔎 Verifying on Etherscan...");
+  await hre.run("verify:verify", {
+    address: contractAddress,
+    constructorArguments: [treasuryAddress],
+  });
+
+  console.log("✅ Verification complete!");
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error(error);
+    console.error("❌ Deployment or verification failed:", error);
     process.exit(1);
-  }); 
+  });

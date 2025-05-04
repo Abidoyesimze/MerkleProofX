@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title MerkleProofX
- * @dev A decentralized contract for verifying Merkle proofs for address lists
+ * @dev A decentralized contract for registering and verifying Merkle proofs (now optimized for kOS)
  */
 contract MerkleProofX {
     // Struct to store Merkle tree information
@@ -18,13 +18,18 @@ contract MerkleProofX {
     // Platform fee configuration
     uint256 public platformFee = 0.001 ether; // 0.001 ETH fee
     address public platformTreasury;
-    
+
+    // Trusted verifier for off-chain signatures (kOS service)
+    address public trustedVerifier;
+
     // Track user's first tree status
     mapping(address => bool) public isNewcomer;
-    
+
     // Mapping to store Merkle roots and their information
     mapping(bytes32 => MerkleTreeInfo) public merkleTrees;
-    
+    mapping(address => bool) public isKosVerified;
+
+
     // Events
     event MerkleTreeAdded(bytes32 indexed root, string description, uint256 listSize, address creator, uint256 feePaid);
     event MerkleTreeRemoved(bytes32 indexed root, address remover);
@@ -32,6 +37,7 @@ contract MerkleProofX {
     event PlatformFeeUpdated(uint256 newFee);
     event TreasuryUpdated(address newTreasury);
     event FeeCollected(address user, uint256 amount);
+    event TrustedVerifierUpdated(address newVerifier);
 
     constructor(address _treasury) {
         require(_treasury != address(0), "Invalid treasury address");
@@ -40,9 +46,6 @@ contract MerkleProofX {
 
     /**
      * @dev Adds a new Merkle root to the contract
-     * @param _root The Merkle root to add
-     * @param _description Description of the list
-     * @param _listSize Number of addresses in the list
      */
     function addMerkleTree(
         bytes32 _root,
@@ -60,9 +63,9 @@ contract MerkleProofX {
             require(success, "Fee transfer failed");
             emit FeeCollected(msg.sender, msg.value);
         } else {
-            isNewcomer[msg.sender] = false; // User is no longer a newcomer
+            isNewcomer[msg.sender] = false;
         }
-        
+
         merkleTrees[_root] = MerkleTreeInfo({
             description: _description,
             timestamp: block.timestamp,
@@ -76,7 +79,6 @@ contract MerkleProofX {
 
     /**
      * @dev Updates platform fee (only callable by treasury)
-     * @param _newFee New platform fee in wei
      */
     function updatePlatformFee(uint256 _newFee) external {
         require(msg.sender == platformTreasury, "Only treasury can update fee");
@@ -86,7 +88,6 @@ contract MerkleProofX {
 
     /**
      * @dev Updates treasury address (only callable by current treasury)
-     * @param _newTreasury New treasury address
      */
     function updateTreasury(address _newTreasury) external {
         require(msg.sender == platformTreasury, "Only treasury can update address");
@@ -96,9 +97,48 @@ contract MerkleProofX {
     }
 
     /**
+     * @dev Sets the trusted verifier address (only callable by treasury)
+     */
+    function setTrustedVerifier(address _verifier) external {
+        require(msg.sender == platformTreasury, "Only treasury can set verifier");
+        require(_verifier != address(0), "Verifier cannot be zero address");
+        trustedVerifier = _verifier;
+        emit TrustedVerifierUpdated(_verifier);
+    }
+
+    /**
+     * @dev Verifies a kOS signed proof for a claimer
+     */
+    function submitVerifiedProof(address _claimer, bytes memory _signature) external returns (bool) {
+    require(trustedVerifier != address(0), "Trusted verifier not set");
+
+    bytes32 messageHash = keccak256(abi.encodePacked(_claimer));
+    bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+
+    address recoveredSigner = recoverSigner(ethSignedMessageHash, _signature);
+    bool isValid = recoveredSigner == trustedVerifier;
+
+    if (isValid) {
+        isKosVerified[_claimer] = true;
+    }
+
+    return isValid;
+}
+
+
+    /**
+     * @dev Removes a Merkle tree from the contract
+     */
+    function removeMerkleTree(bytes32 _root) external {
+        require(merkleTrees[_root].isActive, "Tree does not exist");
+        require(merkleTrees[_root].creator == msg.sender, "Only creator can remove");
+
+        merkleTrees[_root].isActive = false;
+        emit MerkleTreeRemoved(_root, msg.sender);
+    }
+
+    /**
      * @dev Updates a Merkle tree's description
-     * @param _root The Merkle root to update
-     * @param _newDescription New description
      */
     function updateMerkleTreeDescription(
         bytes32 _root,
@@ -107,56 +147,13 @@ contract MerkleProofX {
         require(merkleTrees[_root].isActive, "Tree does not exist");
         require(merkleTrees[_root].creator == msg.sender, "Only creator can update");
         require(bytes(_newDescription).length > 0, "Description cannot be empty");
-        
+
         merkleTrees[_root].description = _newDescription;
         emit MerkleTreeUpdated(_root, _newDescription, msg.sender);
     }
 
     /**
-     * @dev Removes a Merkle tree from the contract
-     * @param _root The Merkle root to remove
-     */
-    function removeMerkleTree(bytes32 _root) external {
-        require(merkleTrees[_root].isActive, "Tree does not exist");
-        require(merkleTrees[_root].creator == msg.sender, "Only creator can remove");
-        
-        merkleTrees[_root].isActive = false;
-        emit MerkleTreeRemoved(_root, msg.sender);
-    }
-
-    /**
-     * @dev Verifies a Merkle proof for a given address
-     * @param _root The Merkle root to verify against
-     * @param _proof Array of proof elements
-     * @param _claimer Address to verify
-     * @return bool True if the proof is valid
-     */
-    function verifyProof(
-        bytes32 _root,
-        bytes32[] calldata _proof,
-        address _claimer
-    ) public view returns (bool) {
-        require(merkleTrees[_root].isActive, "Invalid Merkle root");
-        
-        bytes32 leaf = keccak256(abi.encodePacked(_claimer));
-        bytes32 computedHash = leaf;
-
-        for (uint256 i = 0; i < _proof.length; i++) {
-            bytes32 proofElement = _proof[i];
-            if (computedHash <= proofElement) {
-                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
-            } else {
-                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
-            }
-        }
-
-        return computedHash == _root;
-    }
-
-    /**
      * @dev Gets information about a Merkle tree
-     * @param _root The Merkle root to get info for
-     * @return MerkleTreeInfo The tree information
      */
     function getMerkleTreeInfo(
         bytes32 _root
@@ -167,8 +164,6 @@ contract MerkleProofX {
 
     /**
      * @dev Checks if a Merkle root exists in the contract
-     * @param _root The Merkle root to check
-     * @return bool True if the root exists
      */
     function isMerkleRootValid(bytes32 _root) external view returns (bool) {
         return merkleTrees[_root].isActive;
@@ -176,7 +171,6 @@ contract MerkleProofX {
 
     /**
      * @dev Gets the current platform fee
-     * @return uint256 Current platform fee in wei
      */
     function getPlatformFee() external view returns (uint256) {
         return platformFee;
@@ -184,10 +178,28 @@ contract MerkleProofX {
 
     /**
      * @dev Checks if an address is a newcomer
-     * @param _user Address to check
-     * @return bool True if the address is a newcomer
      */
     function isUserNewcomer(address _user) external view returns (bool) {
         return isNewcomer[_user];
     }
-} 
+
+    /**
+     * @dev Helper to recover signer address from signature
+     */
+    function recoverSigner(bytes32 _ethSignedMessageHash, bytes memory _signature) internal pure returns (address) {
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+        return ecrecover(_ethSignedMessageHash, v, r, s);
+    }
+
+    /**
+     * @dev Helper to split a signature into r, s, v components
+     */
+    function splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
+        require(sig.length == 65, "Invalid signature length");
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+    }
+}
