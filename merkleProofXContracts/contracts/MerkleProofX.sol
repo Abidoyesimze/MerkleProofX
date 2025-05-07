@@ -108,7 +108,7 @@ contract MerkleProofX {
 
     /**
      * @dev Verifies a kOS signed proof for a claimer
-     */
+     */ 
     function submitVerifiedProof(address _claimer, bytes memory _signature) external returns (bool) {
     require(trustedVerifier != address(0), "Trusted verifier not set");
 
